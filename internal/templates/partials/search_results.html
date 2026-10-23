@@ -1,0 +1,89 @@
+{{define "search_results.html"}}
+{{if .Error}}
+<div class="error-box" style="margin-bottom:1rem;">
+  <strong>Input Validation Warning:</strong> {{.Error}}
+</div>
+{{end}}
+
+{{if .ParsedFASTA}}
+<div class="card" style="margin-bottom:1.25rem;border-color:#3b82f6;background:#f8fbff;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.8rem;">
+    <div>
+      <span class="badge badge-live">Valid Protein Sequence Detected</span>
+      <h3 style="margin:0.35rem 0 0.2rem;">{{.ParsedFASTA.Header}} ({{.ParsedFASTA.Length}} amino acids)</h3>
+      <div style="font-size:0.85rem;color:var(--text-secondary);">
+        You can submit an asynchronous sequence similarity search against NCBI BLAST+ (or run an instant classroom reference alignment) right here:
+      </div>
+      {{range .ParsedFASTA.Warnings}}
+      <div class="sci-callout">{{.}}</div>
+      {{end}}
+    </div>
+    <form hx-post="/partials/blast/submit" hx-target="#home-blast-results" style="display:flex;gap:0.45rem;flex-wrap:wrap;align-items:center;">
+      <input type="hidden" name="sequence" value="{{.RawQuery}}">
+      <select name="database" style="padding:0.45rem;border-radius:6px;border:1px solid var(--border-strong);">
+        <option value="swissprot">Swiss-Prot (Curated)</option>
+        <option value="pdb">PDB Structures</option>
+      </select>
+      <select name="mode" style="padding:0.45rem;border-radius:6px;border:1px solid var(--border-strong);">
+        <option value="ncbi">NCBI BLAST+ (Live Async)</option>
+        <option value="reference">Instant Reference Alignment</option>
+      </select>
+      <button type="submit" class="btn btn-primary btn-sm">Run BLAST Homology Search</button>
+    </form>
+  </div>
+  <div id="home-blast-results"></div>
+</div>
+{{end}}
+
+<div class="section-header" style="margin-top:0.5rem;">
+  <div>
+    <h2>{{if .RawQuery}}Matching Biomolecules ({{len .Hits}}){{else}}Showcase Molecular Systems{{end}}</h2>
+    <div class="section-sub">Each system links experimental crystallography with AlphaFold confidence maps and verified residue-level alignments.</div>
+  </div>
+</div>
+
+{{if .Hits}}
+<div class="card-grid">
+  {{range .Hits}}
+  {{$hit := .}}
+  <article class="card">
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:0.35rem;flex-wrap:wrap;">
+        <div style="display:flex;gap:0.3rem;align-items:center;flex-wrap:wrap;">
+          {{if .Reviewed}}
+          <span class="badge badge-reviewed">Swiss-Prot Reviewed</span>
+          {{else}}
+          <span class="badge badge-unreviewed">TrEMBL Unreviewed</span>
+          {{end}}
+          <span class="card-meta">{{.Accession}}</span>
+        </div>
+        <span class="card-meta">{{if .Length}}{{.Length}} aa{{end}}</span>
+      </div>
+
+      <h3 class="card-title">{{.Title}}</h3>
+      <div class="card-meta" style="margin-bottom:0.4rem;">
+        {{if .GeneName}}Gene: <strong>{{.GeneName}}</strong> · {{end}}<em>{{.Organism}}</em>
+      </div>
+      <p class="card-desc">{{.HighlightSnippet}}</p>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:0.4rem;flex-wrap:wrap;padding-top:0.5rem;border-top:1px solid var(--border);">
+      <div style="display:flex;gap:0.3rem;flex-wrap:wrap;">
+        {{range .StructureIDs}}
+        <a href="/explore?q={{$hit.Accession}}&struct={{.}}" class="badge badge-experimental" title="Experimental PDB Structure">PDB {{.}}</a>
+        {{end}}
+        {{if .AlphaFoldID}}
+        <a href="/explore?q={{.Accession}}&struct={{.AlphaFoldID}}" class="badge badge-predicted" title="Predicted AlphaFold Model">AFDB</a>
+        {{end}}
+      </div>
+      <a href="/explore?q={{.Accession}}" class="btn btn-primary btn-sm">Open in 3D →</a>
+    </div>
+  </article>
+  {{end}}
+</div>
+{{else}}
+<div class="card" style="padding:1.5rem;text-align:center;">
+  <p style="margin:0;color:var(--text-secondary);">No biomolecules matched <strong>{{.RawQuery}}</strong>. Check spelling, try a 4-character PDB ID (e.g. <code>1GZX</code>, <code>2HYY</code>), a UniProt accession (<code>P04637</code>), or paste an amino acid sequence.</p>
+</div>
+{{end}}
+{{end}}

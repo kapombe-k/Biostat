@@ -1,0 +1,64 @@
+{{define "content"}}
+<section class="hero">
+  <span class="brand-tag">Sequence → Function → 3D Structure → Scientific Interpretation</span>
+  <h1>Explore Biomolecules in Interactive 3D &amp; Master Structural Biology</h1>
+  <p class="hero-lead">
+    Move seamlessly from a gene name, UniProt accession, raw FASTA sequence, or PDB/AlphaFold identifier to biological function, residue-accurate 3D structure alignment, homology search, and guided molecular lessons.
+  </p>
+
+  <form class="omnibox-card" action="/explore" method="get">
+    <label for="omnibox-input" style="display:block;font-size:0.8rem;color:#94a3b8;margin-bottom:0.45rem;font-weight:600;">
+      Enter Protein Name, UniProt ID, PDB ID, AlphaFold ID, or Paste Amino Acid / FASTA Sequence:
+    </label>
+    <div class="omnibox-row">
+      <textarea id="omnibox-input" name="q" rows="2"
+        placeholder="e.g. P04637, 1GZX, 2HYY, AF-P01308-F1, trypsin, or paste >FASTA sequence…"
+        hx-get="/partials/search"
+        hx-trigger="input changed delay:260ms"
+        hx-target="#live-search-results"></textarea>
+      <button type="submit" class="btn btn-primary" style="padding:0 1.4rem;">Launch 3D Workspace →</button>
+    </div>
+    <div class="quick-pills">
+      <span>Try instant queries:</span>
+      <a class="pill-link" href="/explore?q=P69905&struct=1GZX">Hemoglobin α₂β₂ (1GZX)</a>
+      <a class="pill-link" href="/explore?q=P04637&struct=AF-P04637-F1">p53 AlphaFold Confidence</a>
+      <a class="pill-link" href="/explore?q=P04637&struct=1YCR&chain=B">p53–MDM2 Helix (1YCR)</a>
+      <a class="pill-link" href="/explore?q=P00519&struct=2HYY">ABL1 + Imatinib (2HYY)</a>
+      <a class="pill-link" href="/explore?q=P00760&struct=1GBT">Trypsin Triad &amp; 184A</a>
+      <a class="pill-link" href="/explore?q=P01308&struct=4INS">Cleaved 2-Zn Insulin (4INS)</a>
+      <button type="button" class="pill-link" data-fill-query=">Query_Globin_Fragment&#10;VLSPADKTNVKAAWGKVGAHAGEYGAEALERMFLSFPTTKTYFPHFDLSHGSAQVKGHGKKVADALTNAVAHVDDMPNALSALSDLHAHKLRVDPVNF">Paste Sample FASTA</button>
+    </div>
+  </form>
+</section>
+
+<div id="live-search-results">
+  {{template "search_results.html" .SearchData}}
+</div>
+
+<div class="section-header">
+  <div>
+    <h2>Interactive Structural Biology Curriculum</h2>
+    <div class="section-sub">Step-by-step lessons synchronized live with 3D molecular states, active-site labels, and instant check-for-understanding quizzes.</div>
+  </div>
+  <a href="/lessons" class="btn btn-secondary btn-sm">View All {{len .Lessons}} Lessons →</a>
+</div>
+
+<div class="card-grid">
+  {{range .Lessons}}
+  <article class="card">
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:0.4rem;">
+        <span class="badge badge-experimental">Module {{.Order}} · {{.Difficulty}}</span>
+        <span class="card-meta">~{{.DurationMinutes}} min · {{.FeaturedStructure}}</span>
+      </div>
+      <h3 class="card-title">{{.Title}}</h3>
+      <p class="card-desc">{{.Subtitle}}</p>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding-top:0.4rem;border-top:1px solid var(--border);">
+      <span class="card-meta">{{len .Steps}} 3D steps · {{len .Quiz}} quiz items</span>
+      <a href="/lessons/{{.Slug}}" class="btn btn-primary btn-sm">Start Lesson →</a>
+    </div>
+  </article>
+  {{end}}
+</div>
+{{end}}

@@ -1,0 +1,32 @@
+{{define "quiz_feedback.html"}}
+{{if .Error}}
+<div class="quiz-result-err">{{.Error}}</div>
+{{else if .Eval}}
+  {{if .Eval.IsCorrect}}
+  <div class="quiz-result-ok">
+    <strong>Correct!</strong> {{.Eval.SelectedExplain}}
+    <div style="margin-top:0.5rem;">
+      <button type="button" class="btn btn-secondary btn-sm"
+        hx-get="/lessons/{{.Eval.LessonSlug}}/step/{{.Eval.Question.ProofStepIdx}}"
+        hx-target="#lesson-step-container"
+        hx-swap="innerHTML">
+        Zoom 3D Viewer to Structural Proof (Step {{add .Eval.Question.ProofStepIdx 1}})
+      </button>
+    </div>
+  </div>
+  {{else}}
+  <div class="quiz-result-err">
+    <strong>Not quite:</strong> {{.Eval.SelectedExplain}}
+    <div style="margin-top:0.4rem;"><strong>Key insight:</strong> {{.Eval.CorrectExplain}}</div>
+    <div style="margin-top:0.5rem;">
+      <button type="button" class="btn btn-secondary btn-sm"
+        hx-get="/lessons/{{.Eval.LessonSlug}}/step/{{.Eval.Question.ProofStepIdx}}"
+        hx-target="#lesson-step-container"
+        hx-swap="innerHTML">
+        Inspect Step {{add .Eval.Question.ProofStepIdx 1}} in 3D Viewer
+      </button>
+    </div>
+  </div>
+  {{end}}
+{{end}}
+{{end}}

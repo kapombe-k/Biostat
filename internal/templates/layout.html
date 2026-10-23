@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{if .PageTitle}}{{.PageTitle}} — {{end}}BioScope · Interactive Molecular Learning Lab</title>
+  <meta name="description" content="Explore experimental RCSB PDB structures and AlphaFold predictions interactively in 3D, map sequences to coordinates without false equivalencies, run NCBI BLAST searches, and master structural biology.">
+  <link rel="stylesheet" href="/static/vendor/molstar-5.13.1.css">
+  <link rel="stylesheet" href="/static/css/bioscope.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a href="/" class="brand">
+        <span class="brand-mark">BS</span>
+        <span>BioScope</span>
+        <span class="brand-tag">Molecular Learning Lab</span>
+      </a>
+
+      <form class="topbar-search" action="/explore" method="get" role="search">
+        <input type="search" name="q" value="{{.NavQuery}}" placeholder="Search protein name, UniProt (P04637), PDB (1GZX, 2HYY), or AlphaFold ID…" aria-label="Search biomolecules">
+        <button type="submit" class="btn btn-primary btn-sm">Explore</button>
+      </form>
+
+      <nav class="nav-links" aria-label="Primary navigation">
+        <a href="/" class="nav-link {{if eq .ActiveNav "home"}}active{{end}}">Home</a>
+        <a href="/explore?q=P69905&struct=1GZX" class="nav-link {{if eq .ActiveNav "explore"}}active{{end}}">3D Lab</a>
+        <a href="/lessons" class="nav-link {{if eq .ActiveNav "lessons"}}active{{end}}">Guided Lessons</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container" id="main-content">
+    {{template "content" .}}
+  </main>
+
+  <footer class="site-footer">
+    <div class="site-footer-inner">
+      <div>
+        <strong>BioScope: Interactive Molecular Learning Lab</strong> · Powered by Go, HTMX 2.0.11, Mol* 5.13.1 &amp; 3Dmol.js 2.5.5.
+        <br>Scientific data integrated with attribution from UniProtKB, RCSB PDB, EMBL-EBI AlphaFold DB, PDBe/SIFTS, and NCBI BLAST+.
+      </div>
+      <div>
+        <em>Educational &amp; research exploration tool — distinguish predictions from experimental determinations.</em>
+      </div>
+    </div>
+  </footer>
+
+  {{if .LoadViewers}}
+  <script src="/static/vendor/molstar-5.13.1.js"></script>
+  <script src="/static/vendor/3Dmol-2.5.5-min.js"></script>
+  {{end}}
+  <script src="/static/vendor/htmx-2.0.11.min.js"></script>
+  <script src="/static/js/bioscope.js"></script>
+</body>
+</html>

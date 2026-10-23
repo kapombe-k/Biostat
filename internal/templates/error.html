@@ -1,0 +1,15 @@
+{{define "content"}}
+<section class="card" style="max-width:760px;margin:2rem auto;padding:2rem;">
+  <div>
+    <span class="badge badge-unreviewed">Exploration Notice</span>
+    <h1 style="margin:0.5rem 0;">{{.ErrorHeading}}</h1>
+    <p style="color:var(--text-secondary);">{{.ErrorMessage}}</p>
+    <div style="display:flex;gap:0.6rem;flex-wrap:wrap;margin-top:1.25rem;">
+      <a href="/" class="btn btn-primary">Return to Search &amp; Showcase</a>
+      <a href="/explore?q=P69905&struct=1GZX" class="btn btn-secondary">Open Oxyhemoglobin (1GZX)</a>
+      <a href="/explore?q=P04637&struct=AF-P04637-F1" class="btn btn-secondary">Open p53 AlphaFold Model</a>
+      <a href="/lessons" class="btn btn-secondary">Browse Guided Lessons</a>
+    </div>
+  </div>
+</section>
+{{end}}

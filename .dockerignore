@@ -1,0 +1,9 @@
+.git
+.gitignore
+*.out
+coverage.txt
+bioscope
+bioscope-server
+docs/
+README.md
+Makefile
