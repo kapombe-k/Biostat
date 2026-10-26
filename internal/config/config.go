@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"strconv"
@@ -39,6 +40,10 @@ type Config struct {
 	PDBeBaseURL      string
 	BlastBaseURL     string
 
+	// Optional durable user library. Service-role credentials remain server-side.
+	SupabaseURL            string
+	SupabaseServiceRoleKey string
+
 	// NCBI BLAST job & rate limit enforcement
 	BlastMaxJobs           int
 	BlastPollMinInterval   time.Duration
@@ -72,11 +77,22 @@ func Load() (*Config, error) {
 		AlphaFoldBaseURL:       strings.TrimRight(envString("BIOSCOPE_ALPHAFOLD_BASE_URL", "https://alphafold.ebi.ac.uk"), "/"),
 		PDBeBaseURL:            strings.TrimRight(envString("BIOSCOPE_PDBE_BASE_URL", "https://www.ebi.ac.uk/pdbe"), "/"),
 		BlastBaseURL:           strings.TrimRight(envString("BIOSCOPE_BLAST_BASE_URL", "https://blast.ncbi.nlm.nih.gov/Blast.cgi"), "/"),
+		SupabaseURL:            strings.TrimRight(envString("SUPABASE_URL", ""), "/"),
+		SupabaseServiceRoleKey: envString("SUPABASE_SERVICE_ROLE_KEY", ""),
 		BlastMaxJobs:           envInt("BIOSCOPE_BLAST_MAX_JOBS", 32),
 		BlastPollMinInterval:   time.Duration(envInt("BIOSCOPE_BLAST_POLL_MIN_SECONDS", 60)) * time.Second,
 		BlastSubmitMinInterval: time.Duration(envInt("BIOSCOPE_BLAST_SUBMIT_MIN_INTERVAL_MS", 3500)) * time.Millisecond,
 	}
 
+	if (cfg.SupabaseURL == "") != (cfg.SupabaseServiceRoleKey == "") {
+		return nil, fmt.Errorf("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be configured together")
+	}
+	if cfg.SupabaseURL != "" {
+		u, err := url.Parse(cfg.SupabaseURL)
+		if err != nil || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || (u.Scheme != "https" && !(u.Scheme == "http" && isLoopbackHost(u.Hostname()))) {
+			return nil, fmt.Errorf("SUPABASE_URL must be a valid HTTPS URL (localhost HTTP is allowed for development)")
+		}
+	}
 	if err := cfg.RefreshAllowedHosts(); err != nil {
 		return nil, err
 	}
@@ -107,6 +123,14 @@ func (c *Config) RefreshAllowedHosts() error {
 		c.allowedHosts[strings.ToLower(u.Host)] = struct{}{}
 	}
 	return nil
+}
+
+func isLoopbackHost(host string) bool {
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
 
 // IsAllowedURL verifies that an outbound request targets only an explicitly configured scientific host.

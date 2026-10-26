@@ -76,7 +76,10 @@
         <a href="/explore?q={{.Accession}}&struct={{.AlphaFoldID}}" class="badge badge-predicted" title="Predicted AlphaFold Model">AFDB</a>
         {{end}}
       </div>
-      <a href="/explore?q={{.Accession}}" class="btn btn-primary btn-sm">Open in 3D →</a>
+      <div class="hit-actions">
+        <button type="button" class="btn btn-secondary btn-sm" data-save-search data-save-query="{{.Accession}}" data-save-label="{{.Title}}" data-save-href="/explore?q={{.Accession}}">Save</button>
+        <a href="/explore?q={{.Accession}}" class="btn btn-primary btn-sm">Open in 3D</a>
+      </div>
     </div>
   </article>
   {{end}}

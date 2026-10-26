@@ -30,12 +30,14 @@
         <option value="summary2d">2D Topology Summary</option>
       </select>
       <button type="button" id="ctrl-spin" class="btn btn-ghost-dark" title="Spin model (3Dmol)">Spin</button>
-      <button type="button" id="ctrl-reset" class="btn btn-ghost-dark" title="Reset camera to full structure">Reset View</button>
+      <button type="button" id="ctrl-reset" class="btn btn-ghost-dark" title="Reset camera to full structure">Reset view</button>
+      <button type="button" id="ctrl-screenshot" class="btn btn-ghost-dark" title="Save a PNG snapshot of the current viewport">PNG</button>
     </div>
   </div>
 
   <div class="viewer-stage">
     <div id="viewer-overlay-badge" class="viewer-overlay-badge">Initializing 3D molecular workspace…</div>
+    <div id="viewer-stat-badge" class="viewer-stat-badge">Preparing model</div>
     <div id="viewer-loading" class="viewer-loading">
       <div class="spinner"></div>
       <div id="viewer-loading-msg">Loading atomic coordinates…</div>

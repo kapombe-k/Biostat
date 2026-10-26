@@ -6,6 +6,8 @@ import (
 
 func TestLoadDefaultsAndSSRFGuard(t *testing.T) {
 	t.Setenv("PORT", "7860")
+	t.Setenv("SUPABASE_URL", "")
+	t.Setenv("SUPABASE_SERVICE_ROLE_KEY", "")
 	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("Load() unexpected error: %v", err)
@@ -39,5 +41,30 @@ func TestLoadDefaultsAndSSRFGuard(t *testing.T) {
 		if err := cfg.IsAllowedURL(u); err == nil {
 			t.Errorf("expected SSRF policy to block %s", u)
 		}
+	}
+}
+
+func TestSupabaseConfigurationPairAndURLValidation(t *testing.T) {
+	t.Setenv("SUPABASE_URL", "https://project.supabase.co")
+	t.Setenv("SUPABASE_SERVICE_ROLE_KEY", "secret")
+	cfg, err := Load()
+	if err != nil || cfg.SupabaseURL != "https://project.supabase.co" || cfg.SupabaseServiceRoleKey != "secret" {
+		t.Fatalf("Supabase configuration not loaded: %#v %v", cfg, err)
+	}
+
+	t.Setenv("SUPABASE_SERVICE_ROLE_KEY", "")
+	if _, err := Load(); err == nil {
+		t.Fatal("expected incomplete Supabase configuration to fail")
+	}
+
+	t.Setenv("SUPABASE_URL", "http://example.com")
+	t.Setenv("SUPABASE_SERVICE_ROLE_KEY", "secret")
+	if _, err := Load(); err == nil {
+		t.Fatal("expected insecure non-loopback Supabase URL to fail")
+	}
+
+	t.Setenv("SUPABASE_URL", "http://127.0.0.1:54321")
+	if _, err := Load(); err != nil {
+		t.Fatalf("localhost development URL rejected: %v", err)
 	}
 }

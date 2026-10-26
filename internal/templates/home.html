@@ -1,14 +1,14 @@
 {{define "content"}}
 <section class="hero">
-  <span class="brand-tag">Sequence → Function → 3D Structure → Scientific Interpretation</span>
-  <h1>Explore Biomolecules in Interactive 3D &amp; Master Structural Biology</h1>
+  <span class="brand-tag">STRUCTURAL BIOLOGY · INTERACTIVE WORKBENCH</span>
+  <h1>Read a protein from sequence to structure.</h1>
   <p class="hero-lead">
-    Move seamlessly from a gene name, UniProt accession, raw FASTA sequence, or PDB/AlphaFold identifier to biological function, residue-accurate 3D structure alignment, homology search, and guided molecular lessons.
+    Start with an accession, structure ID, or sequence. Compare experimental coordinates with predicted models, inspect residues and ligands, and keep a traceable record of what you find.
   </p>
 
   <form class="omnibox-card" action="/explore" method="get">
     <label for="omnibox-input" style="display:block;font-size:0.8rem;color:#94a3b8;margin-bottom:0.45rem;font-weight:600;">
-      Enter Protein Name, UniProt ID, PDB ID, AlphaFold ID, or Paste Amino Acid / FASTA Sequence:
+      PROTEIN OR GENE · UNIPROT ACCESSION · PDB ID · FASTA
     </label>
     <div class="omnibox-row">
       <textarea id="omnibox-input" name="q" rows="2"
@@ -16,7 +16,7 @@
         hx-get="/partials/search"
         hx-trigger="input changed delay:260ms"
         hx-target="#live-search-results"></textarea>
-      <button type="submit" class="btn btn-primary" style="padding:0 1.4rem;">Launch 3D Workspace →</button>
+      <button type="submit" class="btn btn-primary" style="padding:0 1.4rem;">Open workspace</button>
     </div>
     <div class="quick-pills">
       <span>Try instant queries:</span>
@@ -34,6 +34,20 @@
 <div id="live-search-results">
   {{template "search_results.html" .SearchData}}
 </div>
+
+<section id="research-library" class="research-library" aria-labelledby="library-heading">
+  <div class="library-heading-row">
+    <div>
+      <p class="eyebrow">YOUR RESEARCH DESK</p>
+      <h2 id="library-heading">Saved studies &amp; recent searches</h2>
+      <p class="section-sub">Recent lookups stay in this browser. Save a study to keep its permalink in your library.</p>
+    </div>
+    <span id="library-sync-status" class="library-status" aria-live="polite">Browser storage ready</span>
+  </div>
+  <div id="library-items" class="library-items">
+    <p class="library-empty">Your recent searches and saved studies will appear here.</p>
+  </div>
+</section>
 
 <div class="section-header">
   <div>

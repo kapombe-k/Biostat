@@ -67,7 +67,200 @@
     init() {
       this.webglSupported = hasWebGLSupport();
       this.bindGlobalDelegation();
+      this.initTheme();
+      this.initLibrary();
       this.bootFromPageJSON();
+    },
+
+    storageGet(key, fallback) {
+      try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; }
+      catch (_) { return fallback; }
+    },
+
+    storageSet(key, value) {
+      try { localStorage.setItem(key, JSON.stringify(value)); return true; }
+      catch (_) { return false; }
+    },
+
+    makeID() {
+      if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+      const bytes = new Uint8Array(16);
+      if (window.crypto && crypto.getRandomValues) crypto.getRandomValues(bytes);
+      else for (let i = 0; i < bytes.length; i++) bytes[i] = Math.random() * 256;
+      bytes[6] = (bytes[6] & 0x0f) | 0x40; bytes[8] = (bytes[8] & 0x3f) | 0x80;
+      const h = Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
+      return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;
+    },
+
+    initTheme() {
+      const saved = this.storageGet("bioscope:theme:v1", "light");
+      const apply = theme => {
+        document.documentElement.dataset.theme = theme;
+        const button = document.getElementById("theme-toggle");
+        if (button) { button.setAttribute("aria-pressed", String(theme === "dark")); button.setAttribute("aria-label", `Switch to ${theme === "dark" ? "light" : "dark"} theme`); button.title = `Switch to ${theme === "dark" ? "light" : "dark"} theme`; }
+      };
+      apply(saved === "dark" ? "dark" : "light");
+      document.addEventListener("click", ev => {
+        if (!ev.target.closest("#theme-toggle")) return;
+        const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+        apply(next);
+        this.storageSet("bioscope:theme:v1", next);
+      });
+    },
+
+    initLibrary() {
+      this.libraryOwner = this.storageGet("bioscope:library-owner:v1", "");
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(this.libraryOwner)) {
+        this.libraryOwner = this.makeID();
+        this.storageSet("bioscope:library-owner:v1", this.libraryOwner);
+      }
+      const records = this.storageGet("bioscope:library:v1", []);
+      const recent = this.storageGet("bioscope:recent:v1", []);
+      const cache = this.storageGet("bioscope:search-cache:v1", []);
+      this.libraryRecords = Array.isArray(records) ? records.filter(r => r && typeof r.record_key === "string").slice(0, 50) : [];
+      this.recentSearches = Array.isArray(recent) ? recent.filter(r => r && typeof r.query === "string").slice(0, 8) : [];
+      this.searchCache = Array.isArray(cache) ? cache.filter(r => r && typeof r.query === "string" && Array.isArray(r.cards)).slice(0, 16) : [];
+      this.libraryDurable = false;
+      this.renderLibrary();
+      this.syncLibrary();
+
+      document.addEventListener("input", ev => {
+        const input = ev.target.closest("#omnibox-input");
+        if (!input) return;
+        const q = input.value.trim().toLowerCase();
+        const hit = this.searchCache.find(item => item.query.toLowerCase() === q);
+        const target = document.getElementById("live-search-results");
+        if (hit && target) this.renderCachedSearch(target, hit);
+      });
+
+      document.body.addEventListener("htmx:afterSwap", ev => {
+        if (!ev.target || ev.target.id !== "live-search-results") return;
+        const input = document.getElementById("omnibox-input");
+        const query = input ? input.value.trim() : "";
+        if (!query || query.length > 500) return;
+        const cards = Array.from(ev.target.querySelectorAll(".card")).slice(0, 8).map(card => {
+          const title = card.querySelector(".card-title");
+          const meta = card.querySelector(".card-meta");
+          const link = card.querySelector('a[href^="/explore"]');
+          const accession = card.querySelector("[data-save-query]");
+          if (!title || !link) return null;
+          return { title: title.textContent.trim().slice(0, 180), meta: meta ? meta.textContent.trim().slice(0, 180) : "", href: link.getAttribute("href"), accession: accession ? accession.dataset.saveQuery : "" };
+        }).filter(Boolean);
+        this.cacheSearch(query, cards);
+      });
+    },
+
+    cacheSearch(query, cards) {
+      const now = Date.now();
+      const normalized = query.trim().slice(0, 500);
+      if (!normalized) return;
+      this.searchCache = [{ query: normalized, cards, updated: now }, ...this.searchCache.filter(item => item.query.toLowerCase() !== normalized.toLowerCase())].slice(0, 16);
+      this.storageSet("bioscope:search-cache:v1", this.searchCache);
+      if (cards.length) {
+        this.recentSearches = [{ query: normalized, label: cards[0].title, href: cards[0].href, updated: now }, ...this.recentSearches.filter(item => item.query.toLowerCase() !== normalized.toLowerCase())].slice(0, 8);
+        this.storageSet("bioscope:recent:v1", this.recentSearches);
+        this.renderLibrary();
+      }
+    },
+
+    renderCachedSearch(target, cache) {
+      const wrap = document.createElement("section");
+      wrap.className = "cached-search-notice";
+      const label = document.createElement("p");
+      label.textContent = `Cached on this device · ${new Date(cache.updated).toLocaleString()}`;
+      wrap.append(label);
+      const list = document.createElement("div");
+      list.className = "card-grid";
+      (cache.cards || []).forEach(item => {
+        if (!item || typeof item.title !== "string" || typeof item.href !== "string" || !item.href.startsWith("/explore")) return;
+        const card = document.createElement("article"); card.className = "card cached-card";
+        const heading = document.createElement("h3"); heading.className = "card-title"; heading.textContent = item.title;
+        const meta = document.createElement("p"); meta.className = "card-meta"; meta.textContent = item.meta || item.accession || "Previously viewed result";
+        const link = document.createElement("a"); link.className = "btn btn-primary btn-sm"; link.href = item.href; link.textContent = "Open cached result";
+        card.append(heading, meta, link); list.append(card);
+      });
+      wrap.append(list); target.replaceChildren(wrap);
+    },
+
+    async syncLibrary() {
+      const status = document.getElementById("library-sync-status");
+      try {
+        const res = await fetch(`/api/library?owner_id=${encodeURIComponent(this.libraryOwner)}`, { credentials: "same-origin", cache: "no-store" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        this.libraryDurable = !!data.durable;
+        const remote = Array.isArray(data.records) ? data.records : [];
+        const known = new Set(this.libraryRecords.map(r => r.record_key));
+        remote.forEach(r => { if (!known.has(r.record_key)) this.libraryRecords.push(r); });
+        this.storageSet("bioscope:library:v1", this.libraryRecords);
+        let allSynced = true;
+        if (this.libraryDurable) {
+          for (const record of this.libraryRecords) {
+            if (!remote.some(r => r.record_key === record.record_key) && !(await this.persistRecord(record))) allSynced = false;
+          }
+        }
+        if (status) status.textContent = this.libraryDurable && allSynced ? "Synced to your Supabase library" : "Saved on this device";
+      } catch (_) {
+        if (status) status.textContent = "Offline · browser library available";
+      }
+      this.renderLibrary();
+    },
+
+    async persistRecord(record) {
+      if (!this.libraryDurable) return false;
+      try {
+        const response = await fetch("/api/library", {
+          method: "PUT", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ owner_id: this.libraryOwner, record_key: record.record_key, kind: record.kind, payload: record.payload })
+        });
+        return response.ok;
+      } catch (_) { return false; /* localStorage remains the source of continuity when offline */ }
+    },
+
+    async saveLibraryRecord(kind, payload) {
+      const record = { owner_id: this.libraryOwner, record_key: this.makeID(), kind, payload, updated_at: new Date().toISOString() };
+      this.libraryRecords = [record, ...this.libraryRecords].slice(0, 50);
+      this.storageSet("bioscope:library:v1", this.libraryRecords);
+      this.renderLibrary();
+      const synced = await this.persistRecord(record);
+      const status = document.getElementById("library-sync-status");
+      const isSynced = this.libraryDurable && synced;
+      if (status) status.textContent = isSynced ? "Saved and synced to Supabase" : "Saved in this browser";
+      return isSynced;
+    },
+
+    async removeLibraryRecord(key) {
+      this.libraryRecords = this.libraryRecords.filter(r => r.record_key !== key);
+      this.storageSet("bioscope:library:v1", this.libraryRecords);
+      this.renderLibrary();
+      try { await fetch(`/api/library/${encodeURIComponent(key)}?owner_id=${encodeURIComponent(this.libraryOwner)}`, { method: "DELETE", credentials: "same-origin" }); } catch (_) {}
+    },
+
+    renderLibrary() {
+      const host = document.getElementById("library-items");
+      if (!host) return;
+      host.replaceChildren();
+      const records = this.libraryRecords.slice(0, 8);
+      const recents = this.recentSearches.slice(0, 4);
+      if (!records.length && !recents.length) {
+        const empty = document.createElement("p"); empty.className = "library-empty"; empty.textContent = "Search results stay on this device; use Save on a result or workspace to build a library."; host.append(empty); return;
+      }
+      const makeEntry = (item, saved) => {
+        const payload = item.payload || item;
+        const row = document.createElement("article"); row.className = "library-item";
+        const text = document.createElement("div"); text.className = "library-item-copy";
+        const title = document.createElement("strong"); title.textContent = payload.label || payload.title || payload.query || "Saved study";
+        const caption = document.createElement("span"); caption.textContent = saved ? `${item.kind === "workspace" ? "Workspace" : "Saved search"} · ${payload.query || payload.structure || "BioScope"}` : `Recent search · ${item.query}`;
+        text.append(title, caption);
+        const actions = document.createElement("div"); actions.className = "library-item-actions";
+        const href = typeof payload.href === "string" ? payload.href : item.href;
+        if (typeof href === "string" && href.startsWith("/explore")) { const open = document.createElement("a"); open.className = "btn btn-secondary btn-sm"; open.href = href; open.textContent = "Open"; actions.append(open); }
+        if (saved) { const remove = document.createElement("button"); remove.className = "btn btn-quiet btn-sm"; remove.type = "button"; remove.textContent = "Remove"; remove.dataset.removeLibrary = item.record_key; actions.append(remove); }
+        else { const pin = document.createElement("button"); pin.className = "btn btn-quiet btn-sm"; pin.type = "button"; pin.textContent = "Save"; pin.dataset.saveSearch = ""; pin.dataset.saveQuery = item.query || ""; pin.dataset.saveLabel = item.label || "Recent search"; pin.dataset.saveHref = item.href || "/"; actions.append(pin); }
+        row.append(text, actions); return row;
+      };
+      records.forEach(r => host.append(makeEntry(r, true)));
+      recents.filter(r => !records.some(saved => (saved.payload || {}).query === r.query)).forEach(r => host.append(makeEntry(r, false)));
     },
 
     bootFromPageJSON() {
@@ -114,6 +307,8 @@
         `<span class="swatch-item"><span class="swatch-dot" style="background:${it.color}"></span>${it.label}</span>`
       ).join("");
 
+      const stats = document.getElementById("viewer-stat-badge");
+      if (stats) stats.textContent = this.state.structureId ? `MODEL ${this.state.structureId}  /  ${this.state.format.toUpperCase()}  /  ${this.state.engine.toUpperCase()}` : "Preparing model";
       const banner = document.getElementById("viewer-overlay-badge");
       if (banner) {
         const parts = [this.state.structureId];
@@ -639,6 +834,9 @@
     },
 
     bindGlobalDelegation() {
+      document.body.addEventListener("htmx:beforeRequest", () => document.body.classList.add("is-loading"));
+      document.body.addEventListener("htmx:afterRequest", () => document.body.classList.remove("is-loading"));
+      document.body.addEventListener("htmx:sendError", () => document.body.classList.remove("is-loading"));
       document.addEventListener("change", ev => {
         const t = ev.target;
         if (!t) return;
@@ -655,6 +853,29 @@
       });
 
       document.addEventListener("click", ev => {
+        const saveSearch = ev.target.closest("[data-save-search]");
+        if (saveSearch) {
+          const original = saveSearch.textContent;
+          saveSearch.disabled = true;
+          this.saveLibraryRecord("search", { label: saveSearch.dataset.saveLabel || saveSearch.dataset.saveQuery, query: saveSearch.dataset.saveQuery || "", href: saveSearch.dataset.saveHref || "/", title: saveSearch.dataset.saveLabel || "" }).then(synced => {
+            saveSearch.textContent = synced ? "Synced" : "Saved locally";
+            setTimeout(() => { if (saveSearch.isConnected) { saveSearch.textContent = original; saveSearch.disabled = false; } }, 1800);
+          });
+          return;
+        }
+        const removeSaved = ev.target.closest("[data-remove-library]");
+        if (removeSaved) { this.removeLibraryRecord(removeSaved.dataset.removeLibrary); return; }
+        if (ev.target.closest("[data-save-workspace]")) {
+          const title = document.querySelector(".workspace-title-group h1");
+          const payload = { label: title ? title.textContent.trim().replace(/\s+/g, " ") : document.title, query: this.state.proteinAcc, structure: this.state.structureId, href: window.location.pathname + window.location.search };
+          const button = ev.target.closest("[data-save-workspace]");
+          button.disabled = true;
+          this.saveLibraryRecord("workspace", payload).then(synced => {
+            button.textContent = synced ? "Synced" : "Saved locally";
+            setTimeout(() => { if (button.isConnected) { button.textContent = "Save study"; button.disabled = false; } }, 1800);
+          });
+          return;
+        }
         const tile = ev.target.closest(".res-tile");
         if (tile) {
           this.focusSingleResidue(tile);
@@ -726,6 +947,19 @@
           if (this.viewer3dmol && this.state.engine === "3dmol") {
             this.viewer3dmol.spin(this.state.spinning ? "y" : false);
           }
+        } else if (ev.target.closest("#ctrl-screenshot")) {
+          const canvas = document.querySelector(".viewer-stage canvas");
+          if (!canvas || !canvas.toBlob) { this.setLoading(false); return; }
+          try {
+            canvas.toBlob(blob => {
+              if (!blob) return;
+              const a = document.createElement("a");
+              a.href = URL.createObjectURL(blob);
+              a.download = `bioscope-${this.state.structureId || "structure"}.png`;
+              a.click();
+              setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+            }, "image/png");
+          } catch (err) { console.warn("Viewport screenshot unavailable", err); }
         } else if (ev.target.closest("#copy-share-btn")) {
           const inp = document.getElementById("share-url-input");
           const btn = ev.target.closest("#copy-share-btn");
