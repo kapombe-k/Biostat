@@ -1,0 +1,36 @@
+{{define "content"}}
+<section class="hero" style="padding:2rem;">
+  <span class="brand-tag">Interactive Molecular Learning Lab</span>
+  <h1>Guided Structural Biology &amp; Bioinformatics Lessons</h1>
+  <p class="hero-lead" style="margin-bottom:0;">
+    Every module pairs original computational biology instruction with live 3D molecular camera states, active-site atom labels, interactive sequence-to-structure syncing, and check-for-understanding quizzes.
+  </p>
+</section>
+
+<div class="card-grid" style="grid-template-columns:repeat(auto-fill, minmax(380px, 1fr));">
+  {{range .Lessons}}
+  <article class="card">
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:0.4rem;">
+        <span class="badge badge-experimental">Module {{.Order}} · {{.Category}}</span>
+        <span class="card-meta">{{.Difficulty}} · {{.DurationMinutes}} min</span>
+      </div>
+      <h2 class="card-title" style="font-size:1.15rem;margin-top:0.45rem;">{{.Title}}</h2>
+      <p style="font-size:0.9rem;color:var(--text-secondary);margin:0.25rem 0 0.7rem;">{{.Subtitle}}</p>
+
+      <div style="background:var(--bg-subtle);border-radius:6px;padding:0.65rem 0.8rem;font-size:0.82rem;">
+        <strong>Learning Objectives:</strong>
+        <ul style="margin:0.3rem 0 0;padding-left:1.15rem;color:var(--text-secondary);">
+          {{range .LearningGoals}}<li>{{.}}</li>{{end}}
+        </ul>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;padding-top:0.65rem;border-top:1px solid var(--border);">
+      <span class="card-meta">Primary Model: <strong>{{.FeaturedStructure}}</strong> · {{len .Steps}} Steps · {{len .Quiz}} Quiz Questions</span>
+      <a href="/lessons/{{.Slug}}" class="btn btn-primary btn-sm">Launch Studio →</a>
+    </div>
+  </article>
+  {{end}}
+</div>
+{{end}}

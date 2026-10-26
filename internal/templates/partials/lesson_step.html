@@ -1,0 +1,68 @@
+{{define "lesson_step.html"}}
+<div id="lesson-step-box">
+  <div class="step-nav" role="tablist" aria-label="Lesson steps">
+    {{$slug := .Lesson.Slug}}
+    {{$cur := .Step.Index}}
+    {{range .Lesson.Steps}}
+    <button type="button"
+      class="btn btn-sm {{if eq .Index $cur}}btn-primary{{else}}btn-secondary{{end}}"
+      hx-get="/lessons/{{$slug}}/step/{{.Index}}"
+      hx-target="#lesson-step-container"
+      hx-swap="innerHTML">
+      Step {{add .Index 1}}
+    </button>
+    {{end}}
+  </div>
+
+  <div style="margin-bottom:0.65rem;">
+    <span class="badge badge-experimental">{{.Step.ConceptTag}}</span>
+    <span class="card-meta" style="margin-left:0.4rem;">Structure: <strong>{{.Step.Scene.StructureID}}</strong> · Chain {{.Step.Scene.ActiveChain}}</span>
+    <h2 style="margin:0.45rem 0 0.55rem;font-size:1.18rem;">{{.Step.Title}}</h2>
+  </div>
+
+  {{range .Step.BodyParagraphs}}
+  <p style="margin:0 0 0.75rem;color:var(--text-primary);font-size:0.92rem;">{{.}}</p>
+  {{end}}
+
+  {{if .Step.WhatToObserve}}
+  <div style="background:var(--accent-soft);border:1px solid #bfdbfe;border-radius:var(--radius-sm);padding:0.75rem 0.9rem;margin:0.85rem 0;">
+    <strong style="font-size:0.84rem;color:#1e3a8a;">What to Inspect in 3D Right Now:</strong>
+    <ul style="margin:0.35rem 0 0;padding-left:1.2rem;font-size:0.85rem;color:#1e293b;">
+      {{range .Step.WhatToObserve}}
+      <li>{{.}}</li>
+      {{end}}
+    </ul>
+  </div>
+  {{end}}
+
+  {{if .Step.ScientificNote}}
+  <div class="sci-callout">
+    <strong>Scientific Interpretation Note:</strong> {{.Step.ScientificNote}}
+  </div>
+  {{end}}
+
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;padding-top:0.75rem;border-top:1px solid var(--border);gap:0.5rem;">
+    {{if .HasPrev}}
+    <button type="button" class="btn btn-secondary btn-sm"
+      hx-get="/lessons/{{.Lesson.Slug}}/step/{{.PrevIdx}}"
+      hx-target="#lesson-step-container"
+      hx-swap="innerHTML">← Previous Step</button>
+    {{else}}
+    <span></span>
+    {{end}}
+
+    <a href="/explore?q={{.Step.Scene.ProteinAcc}}&struct={{.Step.Scene.StructureID}}&chain={{.Step.Scene.ActiveChain}}" class="btn btn-secondary btn-sm">
+      Open Full Workspace
+    </a>
+
+    {{if .HasNext}}
+    <button type="button" class="btn btn-primary btn-sm"
+      hx-get="/lessons/{{.Lesson.Slug}}/step/{{.NextIdx}}"
+      hx-target="#lesson-step-container"
+      hx-swap="innerHTML">Next Step →</button>
+    {{else}}
+    <span class="badge badge-reviewed">Final Step — Try Quiz Below!</span>
+    {{end}}
+  </div>
+</div>
+{{end}}

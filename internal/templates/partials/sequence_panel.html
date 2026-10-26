@@ -1,0 +1,86 @@
+{{define "sequence_panel.html"}}
+{{if .ActiveStructure}}
+<div class="sequence-panel">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:0.6rem;flex-wrap:wrap;margin-bottom:0.65rem;">
+    <div>
+      <strong style="font-size:0.98rem;">Sequence-to-Structure Interactive Matrix</strong>
+      <span class="card-meta" style="margin-left:0.4rem;">Structure {{.ActiveStructure.ID}} ({{upper .ActiveStructure.Format}})</span>
+    </div>
+    <div style="display:flex;gap:0.6rem;font-size:0.75rem;color:var(--text-muted);flex-wrap:wrap;">
+      <span><span class="swatch-dot ss-helix"></span> α-Helix</span>
+      <span><span class="swatch-dot ss-sheet"></span> β-Strand</span>
+      <span><span class="swatch-dot ss-coil"></span> Coil</span>
+      <span><span class="swatch-dot" style="background:#0d9488;border-radius:50%;"></span> Active / Pocket Site</span>
+      <span><span style="border:1px dashed #64748b;padding:0 4px;border-radius:3px;">X</span> Unmodeled Density</span>
+    </div>
+  </div>
+
+  <!-- Chain Selector Tabs -->
+  <div class="chain-tabs" role="tablist" aria-label="Polymer chains">
+    {{$acc := ""}}{{if .Protein}}{{$acc = .Protein.Accession}}{{end}}
+    {{$activeCh := ""}}{{if .ActiveChain}}{{$activeCh = .ActiveChain.AuthAsymID}}{{end}}
+    {{range .ActiveStructure.Chains}}
+    <button type="button"
+      class="btn btn-sm {{if eq .AuthAsymID $activeCh}}btn-primary{{else}}btn-secondary{{end}}"
+      hx-get="/partials/sequence?q={{$acc}}&struct={{$.ActiveStructure.ID}}&chain={{.AuthAsymID}}"
+      hx-target="#sequence-panel-wrapper"
+      hx-swap="innerHTML">
+      Chain {{.AuthAsymID}} · {{.ObservedCount}} res
+      {{if .InsertionCodeCount}} ({{.InsertionCodeCount}} ins){{end}}
+    </button>
+    {{end}}
+
+    {{range .ActiveStructure.Ligands}}
+    <button type="button" class="btn btn-sm btn-secondary" data-focus-ligand="{{.CompID}}" title="{{.Name}} — {{.Role}}">
+      Focus Ligand {{.CompID}} ({{len .ContactResidues}} contacts)
+    </button>
+    {{end}}
+  </div>
+
+  {{if .ActiveChain}}
+  <div class="mapping-banner">
+    <div>
+      <strong>Chain {{.ActiveChain.AuthAsymID}} Mapping ({{.ActiveChain.MappingMethod}}):</strong>
+      {{if .ActiveChain.UniProtAccession}}
+        Aligned to <strong>{{.ActiveChain.UniProtAccession}}</strong> positions <strong>{{.ActiveChain.UniProtStart}}–{{.ActiveChain.UniProtEnd}}</strong>
+        ({{.ActiveChain.PercentIdentity}}% sequence identity · {{.ActiveChain.ObservedCount}} observed / {{.ActiveChain.MissingCount}} unmodeled).
+      {{else}}
+        <em>{{.ActiveChain.Description}}</em> — structural numbering preserved independently without asserting false equivalency to primary protein sequence.
+      {{end}}
+    </div>
+    {{if or .ActiveChain.MappingNotes .ActiveChain.UnmodeledSegments}}
+    <ul>
+      {{range .ActiveChain.MappingNotes}}
+      <li>{{.}}</li>
+      {{end}}
+      {{range .ActiveChain.UnmodeledSegments}}
+      <li><strong>Unmodeled UniProt {{.UniProtStart}}–{{.UniProtEnd}}:</strong> {{.Reason}}.</li>
+      {{end}}
+    </ul>
+    {{end}}
+  </div>
+
+  {{$chainPtr := .ActiveChain}}
+  {{$kind := .ActiveStructure.Kind}}
+  <div class="seq-grid" role="list" aria-label="Chain {{.ActiveChain.AuthAsymID}} residues">
+    {{range .ActiveChain.Residues}}
+    {{$summary := resSummary $chainPtr . $kind}}
+    <button type="button"
+      class="res-tile {{if not .Observed}}is-missing{{end}} {{if .FeatureLabels}}has-feature{{end}} {{if .InsCode}}has-inscode{{end}}"
+      data-chain="{{.ChainID}}"
+      data-auth="{{.AuthSeqID}}"
+      data-ins="{{.InsCode}}"
+      data-comp="{{.CompID}}"
+      data-observed="{{.Observed}}"
+      data-summary="{{$summary}}"
+      title="{{$summary}}">
+      <span class="res-num">{{.AuthLabel}}</span>
+      <span class="res-aa">{{.OneLetter}}</span>
+      <span class="res-ss ss-{{.Secondary}}"></span>
+    </button>
+    {{end}}
+  </div>
+  {{end}}
+</div>
+{{end}}
+{{end}}

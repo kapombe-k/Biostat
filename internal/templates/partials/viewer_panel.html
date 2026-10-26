@@ -1,0 +1,58 @@
+{{define "viewer_panel.html"}}
+<div class="viewer-card">
+  <div class="viewer-toolbar" role="toolbar" aria-label="3D Molecular Viewer Controls">
+    <div class="viewer-toolbar-group">
+      <span class="toolbar-label">Style</span>
+      <select id="ctrl-rep" aria-label="Molecular representation">
+        <option value="cartoon">Cartoon Ribbon</option>
+        <option value="ball_and_stick">Ball &amp; Stick</option>
+        <option value="spacefill">Spacefill Spheres</option>
+        <option value="backbone">Backbone Trace</option>
+      </select>
+
+      <span class="toolbar-label" style="margin-left:0.25rem;">Color</span>
+      <select id="ctrl-color" aria-label="Coloring scheme">
+        <option value="plddt">Confidence (pLDDT)</option>
+        <option value="secondary">Secondary Structure</option>
+        <option value="chain">Subunit Chains</option>
+        <option value="bfactor">B-Factor Mobility</option>
+        <option value="hydrophobicity">Hydrophobicity</option>
+      </select>
+
+      <button type="button" id="ctrl-surface" class="btn btn-ghost-dark" title="Toggle translucent molecular surface">Surface</button>
+      <button type="button" id="ctrl-ligands" class="btn btn-ghost-dark is-active" title="Show/hide non-polymer cofactors and ligands">Ligands</button>
+    </div>
+
+    <div class="viewer-toolbar-group">
+      <select id="ctrl-engine" aria-label="Rendering engine">
+        <option value="molstar">Engine: Mol* 5.13.1</option>
+        <option value="3dmol">Engine: 3Dmol.js 2.5.5</option>
+        <option value="summary2d">2D Topology Summary</option>
+      </select>
+      <button type="button" id="ctrl-spin" class="btn btn-ghost-dark" title="Spin model (3Dmol)">Spin</button>
+      <button type="button" id="ctrl-reset" class="btn btn-ghost-dark" title="Reset camera to full structure">Reset View</button>
+    </div>
+  </div>
+
+  <div class="viewer-stage">
+    <div id="viewer-overlay-badge" class="viewer-overlay-badge">Initializing 3D molecular workspace…</div>
+    <div id="viewer-loading" class="viewer-loading">
+      <div class="spinner"></div>
+      <div id="viewer-loading-msg">Loading atomic coordinates…</div>
+    </div>
+
+    <div id="bioscope-molstar-mount" class="viewer-mount" aria-label="Mol* 3D molecular viewport"></div>
+    <div id="bioscope-3dmol-mount" class="viewer-mount" hidden aria-label="3Dmol.js molecular viewport"></div>
+    <div id="bioscope-fallback-mount" class="viewer-mount" hidden aria-label="2D molecular topology fallback"></div>
+  </div>
+
+  <div class="viewer-legend-bar">
+    <div id="viewer-legend-swatches" class="legend-swatches"></div>
+    <div style="color:#94a3b8;font-size:0.75rem;">Drag to rotate · Scroll to zoom · Right-drag to pan · Click atom or sequence tile to sync</div>
+  </div>
+
+  <div class="live-residue-readout" aria-live="polite">
+    <span id="live-residue-text">Click any residue in 3D or in the sequence matrix below to inspect PDB coordinates, UniProt position, secondary structure, and ligand contacts.</span>
+  </div>
+</div>
+{{end}}

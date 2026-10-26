@@ -1,0 +1,99 @@
+{{define "blast_status.html"}}
+{{if .Error}}
+<div class="error-box" style="margin-top:0.85rem;">
+  <strong>BLAST Validation / Submission Error:</strong> {{.Error}}
+</div>
+{{else if .Job}}
+<div id="blast-job-box-{{.Job.JobID}}" style="margin-top:0.9rem;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0.9rem;background:#ffffff;"
+  {{if or (eq .Job.Status "QUEUED") (eq .Job.Status "RUNNING")}}
+  hx-get="/partials/blast/status/{{.Job.JobID}}"
+  hx-trigger="every 5s"
+  hx-swap="outerHTML"
+  {{end}}>
+
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.6rem;">
+    <div>
+      <strong>Job <code>{{.Job.RID}}</code></strong>
+      <span class="card-meta"> · {{.Job.QueryHeader}} ({{.Job.QueryLength}} aa · DB: {{.Job.Database}})</span>
+    </div>
+    <div style="display:flex;gap:0.4rem;align-items:center;">
+      {{if eq .Job.DeliveryMode "live"}}
+      <span class="badge badge-live">Live NCBI BLAST+ API</span>
+      {{else}}
+      <span class="badge badge-seed">Curated Reference Alignment</span>
+      {{end}}
+      <span class="badge badge-experimental">Status: {{.Job.Status}}</span>
+    </div>
+  </div>
+
+  {{range .Warnings}}
+  <div class="sci-callout">{{.}}</div>
+  {{end}}
+
+  {{if .Job.ErrorMessage}}
+  <div class="sci-callout" style="margin-top:0.4rem;">{{.Job.ErrorMessage}}</div>
+  {{end}}
+
+  {{if or (eq .Job.Status "QUEUED") (eq .Job.Status "RUNNING")}}
+  <div style="display:flex;align-items:center;gap:0.75rem;padding:0.65rem;background:var(--bg-subtle);border-radius:6px;font-size:0.84rem;">
+    <div class="spinner" style="width:20px;height:20px;border-width:2px;"></div>
+    <div>
+      <strong>Asynchronous Search Active</strong> — Respecting strict NCBI rate policy (max 1 status check per 60s per RID; next upstream poll allowed in <strong>{{.NextPollSeconds}}s</strong> · total upstream polls: {{.Job.PollCount}}).
+    </div>
+  </div>
+  {{else if eq .Job.Status "READY"}}
+    {{if .Job.Hits}}
+    <div style="overflow-x:auto;margin-top:0.6rem;">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Accession &amp; Description</th>
+            <th>Bit Score</th>
+            <th>E-Value</th>
+            <th>Identity</th>
+            <th>Coverage</th>
+            <th>3D Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Job.Hits}}
+          <tr>
+            <td>{{.Rank}}</td>
+            <td>
+              <strong><code>{{.Accession}}</code></strong> — {{.Description}}
+              {{if .Organism}}<div class="card-meta">{{.Organism}} ({{.Length}} aa)</div>{{end}}
+              {{if .QueryAlign}}
+              <details style="margin-top:0.25rem;">
+                <summary style="cursor:pointer;color:var(--accent);font-size:0.76rem;">View local alignment ({{.QueryFrom}}–{{.QueryTo}} ↔ {{.HitFrom}}–{{.HitTo}})</summary>
+                <pre class="aln-pre">Query {{printf "%-4d" .QueryFrom}} {{.QueryAlign}} {{.QueryTo}}
+           {{.Midline}}
+Sbjct {{printf "%-4d" .HitFrom}} {{.HitAlign}} {{.HitTo}}</pre>
+              </details>
+              {{end}}
+            </td>
+            <td style="font-family:var(--font-mono);">{{.BitScore}}</td>
+            <td style="font-family:var(--font-mono);font-weight:700;">{{formatEVal .EValue}}</td>
+            <td style="font-family:var(--font-mono);">{{.IdentityPct}}%</td>
+            <td style="font-family:var(--font-mono);">{{.QueryCoverPct}}%</td>
+            <td>
+              {{if .UniProtGuess}}
+              <a href="/explore?q={{.UniProtGuess}}" class="btn btn-primary btn-sm">3D Lab →</a>
+              {{else if .PDBChainGuess}}
+              <a href="/explore?q={{.PDBChainGuess}}&struct={{.PDBChainGuess}}" class="btn btn-primary btn-sm">PDB {{.PDBChainGuess}} →</a>
+              {{else}}
+              <a href="/explore?q={{.Accession}}" class="btn btn-secondary btn-sm">Lookup →</a>
+              {{end}}
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{else}}
+    <p style="font-size:0.86rem;color:var(--text-secondary);margin:0.5rem 0 0;">No statistically significant sequence alignments matched the selected database threshold.</p>
+    {{end}}
+  {{end}}
+</div>
+{{end}}
+{{end}}

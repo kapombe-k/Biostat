@@ -1,0 +1,14 @@
+# Compiled Go binaries & coverage artifacts
+/bioscope
+/bioscope-server
+*.exe
+*.out
+coverage.txt
+
+# Local caches & editor state
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
+/tmp/

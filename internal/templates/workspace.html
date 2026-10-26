@@ -1,0 +1,327 @@
+{{define "content"}}
+{{$bundle := .Bundle}}
+{{$prot := $bundle.Protein}}
+{{$struct := $bundle.ActiveStructure}}
+
+<script type="application/json" id="bioscope-scene-json">{{toJSON .SceneBootstrap}}</script>
+
+<!-- Workspace Header -->
+<section class="workspace-header">
+  <div class="workspace-title-group">
+    <div style="display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap;">
+      {{if $prot.Reviewed}}
+      <span class="badge badge-reviewed">UniProtKB Reviewed (Swiss-Prot)</span>
+      {{else}}
+      <span class="badge badge-unreviewed">UniProtKB Unreviewed (TrEMBL)</span>
+      {{end}}
+
+      {{if $struct}}
+        {{if eq $struct.Kind "predicted"}}
+        <span class="badge badge-predicted">Computational Prediction ({{$struct.SourceDB}})</span>
+        {{else}}
+        <span class="badge badge-experimental">Experimental Structure ({{$struct.Method}})</span>
+        {{end}}
+      {{end}}
+
+      {{if eq $prot.Provenance.DeliveryMode "live"}}
+      <span class="badge badge-live">Live Upstream API</span>
+      {{else}}
+      <span class="badge badge-seed">Curated Classroom Snapshot</span>
+      {{end}}
+    </div>
+
+    <h1>{{$prot.RecommendedName}} <span style="font-weight:400;color:var(--text-muted);font-family:var(--font-mono);font-size:1.05rem;">({{$prot.Accession}})</span></h1>
+    <div style="font-size:0.86rem;color:var(--text-secondary);">
+      <em>{{$prot.OrganismName}}</em>{{if $prot.OrganismCommon}} ({{$prot.OrganismCommon}}){{end}}
+      {{if $prot.GeneNames}} · Gene: <strong>{{join $prot.GeneNames ", "}}</strong>{{end}}
+      {{if $prot.Length}} · Canonical Sequence: <strong>{{$prot.Length}} aa</strong>{{end}}
+      {{if $prot.MassDa}} · Mass: <strong>{{$prot.MassDa}} Da</strong>{{end}}
+    </div>
+  </div>
+
+  <div class="workspace-actions">
+    {{if $prot.Sequence}}
+    <a href="/api/export/fasta?q={{$prot.Accession}}" class="btn btn-secondary btn-sm">Download FASTA</a>
+    {{end}}
+    {{if $struct}}
+    <a href="{{$struct.CoordinateURL}}?download=1" class="btn btn-secondary btn-sm">Coordinates (.{{$struct.Format}})</a>
+    {{end}}
+    <a id="export-json-btn" href="/api/export/json?q={{$prot.Accession}}{{if $struct}}&struct={{$struct.ID}}{{end}}" class="btn btn-primary btn-sm">
+      Export Exploration JSON
+    </a>
+  </div>
+</section>
+
+{{range $bundle.Warnings}}
+<div class="sci-callout">{{.}}</div>
+{{end}}
+
+<div class="workspace-grid">
+  <!-- LEFT COLUMN: 3D Molecular Viewport + Interactive Sequence-to-Structure Matrix -->
+  <div>
+    {{template "viewer_panel.html" .}}
+
+    <div id="sequence-panel-wrapper">
+      {{template "sequence_panel.html" $bundle}}
+    </div>
+  </div>
+
+  <!-- RIGHT COLUMN: Tabbed Scientific Inspector -->
+  <aside class="inspector-card">
+    <div class="tab-bar" role="tablist">
+      <button type="button" class="tab-btn is-active" data-tab-target="pane-structures">Structures ({{len $bundle.AvailableStructures}})</button>
+      <button type="button" class="tab-btn" data-tab-target="pane-biology">Biology &amp; Function</button>
+      <button type="button" class="tab-btn" data-tab-target="pane-blast">BLAST Similarity</button>
+      <button type="button" class="tab-btn" data-tab-target="pane-provenance">Provenance &amp; Share</button>
+    </div>
+
+    <!-- TAB 1: STRUCTURES & QUALITY METRICS -->
+    <div id="pane-structures" class="tab-pane">
+      {{if $struct}}
+      <div style="margin-bottom:1rem;">
+        <div style="font-size:0.76rem;text-transform:uppercase;color:var(--text-muted);font-weight:700;">Active 3D Model Telemetry</div>
+        <h3 style="margin:0.2rem 0 0.35rem;font-size:1.02rem;">{{$struct.ID}} — {{$struct.Title}}</h3>
+
+        {{if eq $struct.Kind "predicted"}}
+        <div class="metric-grid">
+          <div class="metric-box">
+            <div class="metric-label">Mean pLDDT</div>
+            <div class="metric-value">{{$struct.Quality.MeanPLDDT}}</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-label">Very High (≥90)</div>
+            <div class="metric-value" style="color:#0053D6;">{{$struct.Quality.PctVeryHigh}}%</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-label">Confident (70–90)</div>
+            <div class="metric-value" style="color:#0284c7;">{{$struct.Quality.PctConfident}}%</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-label">Very Low (&lt;50)</div>
+            <div class="metric-value" style="color:#ea580c;">{{$struct.Quality.PctVeryLow}}%</div>
+          </div>
+        </div>
+        {{else}}
+        <div class="metric-grid">
+          <div class="metric-box">
+            <div class="metric-label">Resolution</div>
+            <div class="metric-value">{{derefFloat $struct.Quality.ResolutionAngstrom "%.2f Å"}}</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-label">R-Free / R-Work</div>
+            <div class="metric-value">{{derefFloat $struct.Quality.RFree "%.3f"}}</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-label">Mean B-Factor</div>
+            <div class="metric-value">{{$struct.Quality.MeanBFactor}} Å²</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-label">Rama Outliers</div>
+            <div class="metric-value">{{derefFloat $struct.Quality.RamachandranOutliers "%.1f%%"}}</div>
+          </div>
+        </div>
+        {{end}}
+
+        <div class="sci-callout">{{$struct.Quality.InterpretationNote}}</div>
+
+        {{if $struct.Ligands}}
+        <div style="margin-top:0.8rem;">
+          <strong style="font-size:0.86rem;">Bound Non-Polymer Cofactors &amp; Ligands (≤ 4.5 Å Pocket Contacts):</strong>
+          {{range $struct.Ligands}}
+          <div style="margin-top:0.45rem;padding:0.6rem;background:var(--bg-subtle);border-radius:6px;font-size:0.82rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:0.4rem;">
+              <span><strong><code>{{.CompID}}</code></strong> — {{.Name}} <span class="card-meta">(Chain {{.ChainID}}:{{.AuthSeqID}})</span></span>
+              <button type="button" class="btn btn-primary btn-sm" data-focus-ligand="{{.CompID}}">Zoom Pocket</button>
+            </div>
+            <div style="color:var(--text-secondary);margin-top:0.2rem;">{{.Role}}</div>
+            {{if .ContactResidues}}
+            <div style="margin-top:0.35rem;display:flex;gap:0.28rem;flex-wrap:wrap;">
+              {{range $idx, $cr := .ContactResidues}}
+                {{if lt $idx 8}}
+                <button type="button" class="pill-link" style="background:#ffffff;color:#0f172a;border-color:var(--border-strong);"
+                  data-focus-chain="{{$cr.ChainID}}" data-focus-residue="{{$cr.AuthSeqID}}" data-focus-ins="{{$cr.InsCode}}"
+                  data-focus-label="{{$cr.CompID}} {{$cr.AuthLabel}} ({{$cr.DistanceAng}} Å)">
+                  {{$cr.ChainID}}:{{$cr.CompID}}{{$cr.AuthLabel}} ({{$cr.DistanceAng}}Å)
+                </button>
+                {{end}}
+              {{end}}
+            </div>
+            {{end}}
+          </div>
+          {{end}}
+        </div>
+        {{end}}
+      </div>
+      {{end}}
+
+      <hr style="border:none;border-top:1px solid var(--border);margin:0.9rem 0;">
+      <strong style="display:block;font-size:0.88rem;margin-bottom:0.55rem;">Available Experimental &amp; Predicted Models</strong>
+      {{range $bundle.AvailableStructures}}
+      <div class="struct-item {{if and $struct (eq .ID $struct.ID)}}is-current{{end}}">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:0.4rem;flex-wrap:wrap;">
+          <div>
+            {{if eq .Kind "predicted"}}
+            <span class="badge badge-predicted">Predicted · {{.SourceDB}}</span>
+            {{else}}
+            <span class="badge badge-experimental">Experimental · {{.Method}}</span>
+            {{end}}
+            <strong style="margin-left:0.3rem;font-family:var(--font-mono);">{{.ID}}</strong>
+          </div>
+          {{if and $struct (eq .ID $struct.ID)}}
+          <span class="badge badge-reviewed">Loaded in Viewer</span>
+          {{else}}
+          <a href="/explore?q={{$prot.Accession}}&struct={{.ID}}" class="btn btn-primary btn-sm">Load Model →</a>
+          {{end}}
+        </div>
+        <div style="font-size:0.84rem;margin-top:0.35rem;font-weight:600;">{{.Title}}</div>
+        <div class="card-meta" style="margin-top:0.2rem;">
+          {{if .ResolutionAngstrom}}Resolution: {{derefFloat .ResolutionAngstrom "%.2f Å"}} · {{end}}
+          {{if .MeanPLDDT}}Mean pLDDT: {{derefFloat .MeanPLDDT "%.1f"}} · {{end}}
+          {{if .CoverageRange}}{{.CoverageRange}}{{end}}
+        </div>
+      </div>
+      {{end}}
+    </div>
+
+    <!-- TAB 2: BIOLOGICAL ANNOTATIONS -->
+    <div id="pane-biology" class="tab-pane" hidden>
+      <h3 style="margin:0 0 0.4rem;font-size:1rem;">Biological Function</h3>
+      <p style="font-size:0.88rem;color:var(--text-secondary);margin-top:0;">{{$prot.FunctionSummary}}</p>
+
+      {{if $prot.CatalyticActivities}}
+      <h4 style="margin:0.9rem 0 0.3rem;font-size:0.88rem;">Catalytic Reaction</h4>
+      <ul style="margin:0;padding-left:1.2rem;font-size:0.85rem;">
+        {{range $prot.CatalyticActivities}}<li><code>{{.}}</code></li>{{end}}
+      </ul>
+      {{end}}
+
+      {{if $prot.SubunitNote}}
+      <h4 style="margin:0.9rem 0 0.3rem;font-size:0.88rem;">Quaternary Subunit Architecture</h4>
+      <p style="margin:0;font-size:0.85rem;color:var(--text-secondary);">{{$prot.SubunitNote}}</p>
+      {{end}}
+
+      {{if $prot.SubcellularLocations}}
+      <h4 style="margin:0.9rem 0 0.3rem;font-size:0.88rem;">Subcellular Localization</h4>
+      <div style="display:flex;gap:0.35rem;flex-wrap:wrap;">
+        {{range $prot.SubcellularLocations}}<span class="badge badge-seed">{{.}}</span>{{end}}
+      </div>
+      {{end}}
+
+      {{if $prot.Domains}}
+      <h4 style="margin:0.95rem 0 0.4rem;font-size:0.88rem;">Domains, Chains &amp; Processing Regions (UniProt Numbering)</h4>
+      <table class="data-table">
+        <thead><tr><th>Type</th><th>Positions</th><th>Annotation</th></tr></thead>
+        <tbody>
+          {{range $prot.Domains}}
+          <tr>
+            <td><strong>{{.Type}}</strong></td>
+            <td style="font-family:var(--font-mono);">{{.Start}}–{{.End}}</td>
+            <td>{{.Description}}</td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+      {{end}}
+
+      {{if $prot.Features}}
+      <h4 style="margin:0.95rem 0 0.4rem;font-size:0.88rem;">Key Functional Sites, Cofactors &amp; Variants</h4>
+      <table class="data-table">
+        <thead><tr><th>Type</th><th>UniProt Pos</th><th>Role</th></tr></thead>
+        <tbody>
+          {{range $prot.Features}}
+          <tr>
+            <td><span class="badge badge-experimental">{{.Type}}</span></td>
+            <td style="font-family:var(--font-mono);">{{.Start}}{{if ne .Start .End}}–{{.End}}{{end}}</td>
+            <td>{{.Description}}</td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+      {{end}}
+
+      {{if $prot.Diseases}}
+      <h4 style="margin:0.95rem 0 0.4rem;font-size:0.88rem;">Clinical &amp; Disease Associations</h4>
+      {{range $prot.Diseases}}
+      <div style="padding:0.6rem;background:var(--bg-subtle);border-radius:6px;margin-bottom:0.45rem;font-size:0.83rem;">
+        <strong>{{.Name}}</strong>{{if .Acronym}} ({{.Acronym}}){{end}}{{if .MIM}} · OMIM {{.MIM}}{{end}}
+        <div style="color:var(--text-secondary);margin-top:0.2rem;">{{.Description}}</div>
+      </div>
+      {{end}}
+      {{end}}
+
+      {{if $prot.Lineage}}
+      <h4 style="margin:0.95rem 0 0.3rem;font-size:0.88rem;">Taxonomic Lineage (Taxon {{$prot.TaxonID}})</h4>
+      <p style="font-size:0.8rem;color:var(--text-muted);margin:0;">{{join $prot.Lineage " › "}}</p>
+      {{end}}
+    </div>
+
+    <!-- TAB 3: ASYNCHRONOUS NCBI BLAST SEQUENCE SIMILARITY -->
+    <div id="pane-blast" class="tab-pane" hidden>
+      <h3 style="margin:0 0 0.35rem;font-size:1rem;">Sequence Similarity Search (BLASTp)</h3>
+      <p style="font-size:0.84rem;color:var(--text-secondary);margin-top:0;">
+        Submit an asynchronous <code>blastp</code> search via the NCBI BLAST URL API (rate-limited strictly to ≤ 1 status poll per 60s per job ID) or run an instant local Smith-Waterman alignment against BioScope's curated Swiss-Prot reference catalog.
+      </p>
+
+      <form hx-post="/partials/blast/submit" hx-target="#workspace-blast-output">
+        <label for="ws-blast-seq" style="font-size:0.8rem;font-weight:600;display:block;margin-bottom:0.3rem;">Query Amino Acid / FASTA Sequence:</label>
+        <textarea id="ws-blast-seq" name="sequence" rows="5"
+          style="width:100%;font-family:var(--font-mono);font-size:0.78rem;padding:0.55rem;border:1px solid var(--border-strong);border-radius:6px;">>{{$prot.Accession}}|{{$prot.EntryName}}
+{{$prot.Sequence}}</textarea>
+
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.55rem;align-items:center;">
+          <select name="database" style="padding:0.42rem;border-radius:6px;border:1px solid var(--border-strong);font-size:0.84rem;">
+            <option value="swissprot">Database: Swiss-Prot</option>
+            <option value="pdb">Database: PDB Protein Sequences</option>
+            <option value="refseq_protein">Database: RefSeq Protein</option>
+          </select>
+          <select name="mode" style="padding:0.42rem;border-radius:6px;border:1px solid var(--border-strong);font-size:0.84rem;">
+            <option value="ncbi">Live NCBI BLAST+ API</option>
+            <option value="reference">Instant Classroom Reference</option>
+          </select>
+          <button type="submit" class="btn btn-primary btn-sm">Run Similarity Search</button>
+        </div>
+      </form>
+
+      <div id="workspace-blast-output"></div>
+    </div>
+
+    <!-- TAB 4: REPRODUCIBILITY, PROVENANCE & SHAREABLE URLS -->
+    <div id="pane-provenance" class="tab-pane" hidden>
+      <h3 style="margin:0 0 0.35rem;font-size:1rem;">Reproducible Shareable Permalink</h3>
+      <p style="font-size:0.83rem;color:var(--text-secondary);margin-top:0;">
+        Captures the exact protein, 3D model, polymer chain, representation, coloring scheme, rendering engine, and focused residue selection:
+      </p>
+      <div style="display:flex;gap:0.4rem;margin-bottom:1rem;">
+        <input id="share-url-input" type="text" readonly value="{{.ShareURL}}"
+          style="flex:1;font-family:var(--font-mono);font-size:0.78rem;padding:0.45rem 0.6rem;border:1px solid var(--border-strong);border-radius:6px;background:var(--bg-subtle);">
+        <button type="button" id="copy-share-btn" class="btn btn-primary btn-sm">Copy URL</button>
+      </div>
+
+      <h4 style="margin:0.8rem 0 0.4rem;font-size:0.88rem;">Data Provenance &amp; Attribution</h4>
+      <table class="data-table">
+        <thead><tr><th>Source</th><th>ID &amp; Status</th><th>Retrieved &amp; Integrity</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>{{$prot.Provenance.SourceName}}</strong><div class="card-meta">{{$prot.Provenance.DeliveryMode}}</div></td>
+            <td><code>{{$prot.Provenance.RecordID}}</code><br>{{$prot.Provenance.RecordStatus}}</td>
+            <td class="card-meta">{{$prot.Provenance.RetrievedAt.Format "2006-01-02 15:04 UTC"}}<br>{{$prot.Provenance.License}}</td>
+          </tr>
+          {{if $struct}}
+            {{range $struct.Provenance}}
+            <tr>
+              <td><strong>{{.SourceName}}</strong><div class="card-meta">{{.DeliveryMode}}</div></td>
+              <td><code>{{.RecordID}}</code><br>{{.RecordStatus}}</td>
+              <td class="card-meta">
+                {{.RetrievedAt.Format "2006-01-02 15:04 UTC"}}
+                {{if .SHA256}}<br>SHA-256: <code title="{{.SHA256}}">{{slice .SHA256 0 16}}…</code>{{end}}
+                {{if .Citation}}<div style="margin-top:0.25rem;color:var(--text-secondary);">{{.Citation}}</div>{{end}}
+              </td>
+            </tr>
+            {{end}}
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+  </aside>
+</div>
+{{end}}

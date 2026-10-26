@@ -1,0 +1,65 @@
+{{define "content"}}
+<script type="application/json" id="bioscope-scene-json">{{toJSON .SceneBootstrap}}</script>
+
+<section class="workspace-header">
+  <div class="workspace-title-group">
+    <div style="display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap;">
+      <a href="/lessons" class="badge badge-seed">← All Guided Lessons</a>
+      <span class="badge badge-experimental">Module {{.Lesson.Order}} · {{.Lesson.Category}}</span>
+      <span class="card-meta">{{.Lesson.Difficulty}} · ~{{.Lesson.DurationMinutes}} min</span>
+    </div>
+    <h1>{{.Lesson.Title}}</h1>
+    <div style="font-size:0.88rem;color:var(--text-secondary);">{{.Lesson.Subtitle}}</div>
+  </div>
+  <div class="workspace-actions">
+    {{if .NextLesson}}
+    <a href="/lessons/{{.NextLesson.Slug}}" class="btn btn-primary btn-sm">Next Module: {{.NextLesson.Title}} →</a>
+    {{else}}
+    <a href="/explore?q=P69905&struct=1GZX" class="btn btn-primary btn-sm">Open Free 3D Lab →</a>
+    {{end}}
+  </div>
+</section>
+
+<div class="workspace-grid">
+  <!-- LEFT: Live Synchronized 3D Molecular Viewport + Interactive Sequence Matrix -->
+  <div>
+    {{template "viewer_panel.html" .}}
+    <div id="sequence-panel-wrapper">
+      {{template "sequence_panel.html" .Bundle}}
+    </div>
+  </div>
+
+  <!-- RIGHT: Guided Step Studio + Interactive Quiz -->
+  <div>
+    <div class="card" id="lesson-step-container" style="margin-bottom:1.1rem;">
+      {{template "lesson_step.html" .StepView}}
+    </div>
+
+    <div class="card">
+      <div>
+        <span class="badge badge-predicted">Interactive Check for Understanding</span>
+        <h3 style="margin:0.4rem 0 0.25rem;font-size:1.05rem;">Test Your Structural Interpretation</h3>
+        <p style="margin:0 0 0.7rem;font-size:0.84rem;color:var(--text-secondary);">
+          Select an answer for instant feedback and one-click 3D structural proof:
+        </p>
+
+        {{$slug := .Lesson.Slug}}
+        {{range .Lesson.Quiz}}
+        {{$qid := .ID}}
+        <form class="quiz-card" hx-post="/lessons/{{$slug}}/quiz/{{$qid}}" hx-target="#quiz-fb-{{$qid}}" hx-swap="innerHTML">
+          <div style="font-weight:700;font-size:0.9rem;margin-bottom:0.65rem;">{{.Prompt}}</div>
+          {{range .Options}}
+          <label class="quiz-option">
+            <input type="radio" name="option" value="{{.ID}}" required style="margin-top:0.2rem;">
+            <span>{{.Text}}</span>
+          </label>
+          {{end}}
+          <button type="submit" class="btn btn-primary btn-sm" style="margin-top:0.35rem;">Check Answer</button>
+          <div id="quiz-fb-{{$qid}}"></div>
+        </form>
+        {{end}}
+      </div>
+    </div>
+  </div>
+</div>
+{{end}}
