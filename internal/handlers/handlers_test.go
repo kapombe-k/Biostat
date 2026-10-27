@@ -18,6 +18,8 @@ import (
 
 func setupIntegrationServer(t *testing.T) *httptest.Server {
 	t.Helper()
+	t.Setenv("SUPABASE_URL", "")
+	t.Setenv("SUPABASE_SERVICE_ROLE_KEY", "")
 	cfg, err := config.Load()
 	if err != nil {
 		t.Fatalf("config.Load: %v", err)
@@ -163,4 +165,44 @@ func TestEndToEndWorkflowIntegration(t *testing.T) {
 		t.Fatalf("export FASTA failed: %v", err)
 	}
 	fastaRes.Body.Close()
+
+	// 8. User-scoped persistent library API (memory fallback in tests)
+	ownerID := "11111111-1111-4111-8111-111111111111"
+	recordID := "22222222-2222-4222-8222-222222222222"
+	libraryPayload := `{"owner_id":"` + ownerID + `","record_key":"` + recordID + `","kind":"search","payload":{"label":"TP53","query":"P04637","href":"/explore?q=P04637"}}`
+	putReq, _ := http.NewRequest(http.MethodPut, srv.URL+"/api/library", strings.NewReader(libraryPayload))
+	putReq.Header.Set("Content-Type", "application/json")
+	putRes, err := http.DefaultClient.Do(putReq)
+	if err != nil || putRes.StatusCode != http.StatusNoContent {
+		t.Fatalf("library save failed: %v status=%v", err, putRes)
+	}
+	putRes.Body.Close()
+	listRes, err := http.Get(srv.URL + "/api/library?owner_id=" + ownerID)
+	if err != nil || listRes.StatusCode != http.StatusOK {
+		t.Fatalf("library list failed: %v status=%v", err, listRes)
+	}
+	var libraryData struct {
+		Records []map[string]any `json:"records"`
+		Durable bool             `json:"durable"`
+	}
+	if err := json.NewDecoder(listRes.Body).Decode(&libraryData); err != nil {
+		t.Fatal(err)
+	}
+	listRes.Body.Close()
+	if len(libraryData.Records) != 1 || libraryData.Durable {
+		t.Fatalf("unexpected library payload: %#v", libraryData)
+	}
+	badReq, _ := http.NewRequest(http.MethodPut, srv.URL+"/api/library", strings.NewReader(strings.Replace(libraryPayload, ownerID, "not-a-uuid", 1)))
+	badReq.Header.Set("Content-Type", "application/json")
+	badRes, _ := http.DefaultClient.Do(badReq)
+	if badRes.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected invalid owner to be rejected, got %d", badRes.StatusCode)
+	}
+	badRes.Body.Close()
+	deleteReq, _ := http.NewRequest(http.MethodDelete, srv.URL+"/api/library/"+recordID+"?owner_id="+ownerID, nil)
+	deleteRes, err := http.DefaultClient.Do(deleteReq)
+	if err != nil || deleteRes.StatusCode != http.StatusNoContent {
+		t.Fatalf("library delete failed: %v status=%v", err, deleteRes)
+	}
+	deleteRes.Body.Close()
 }

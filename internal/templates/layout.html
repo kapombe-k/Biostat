@@ -3,10 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="htmx-config" content='{"globalViewTransitions":true}'>
   <title>{{if .PageTitle}}{{.PageTitle}} — {{end}}BioScope · Interactive Molecular Learning Lab</title>
   <meta name="description" content="Explore experimental RCSB PDB structures and AlphaFold predictions interactively in 3D, map sequences to coordinates without false equivalencies, run NCBI BLAST searches, and master structural biology.">
   <link rel="stylesheet" href="/static/vendor/molstar-5.13.1.css">
-  <link rel="stylesheet" href="/static/css/bioscope.css">
+  <link rel="stylesheet" href="/static/css/bioscope.css?v=2">
 </head>
 <body>
   <header class="topbar">
@@ -25,10 +26,12 @@
       <nav class="nav-links" aria-label="Primary navigation">
         <a href="/" class="nav-link {{if eq .ActiveNav "home"}}active{{end}}">Home</a>
         <a href="/explore?q=P69905&struct=1GZX" class="nav-link {{if eq .ActiveNav "explore"}}active{{end}}">3D Lab</a>
-        <a href="/lessons" class="nav-link {{if eq .ActiveNav "lessons"}}active{{end}}">Guided Lessons</a>
+        <a href="/lessons" class="nav-link {{if eq .ActiveNav "lessons"}}active{{end}}">Lessons</a>
+        <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Switch color theme" title="Switch color theme">◐</button>
       </nav>
     </div>
   </header>
+  <div class="network-progress" aria-hidden="true"></div>
 
   <main class="container" id="main-content">
     {{template "content" .}}
@@ -51,6 +54,6 @@
   <script src="/static/vendor/3Dmol-2.5.5-min.js"></script>
   {{end}}
   <script src="/static/vendor/htmx-2.0.11.min.js"></script>
-  <script src="/static/js/bioscope.js"></script>
+  <script src="/static/js/bioscope.js?v=2"></script>
 </body>
 </html>

@@ -9,20 +9,23 @@ import (
 	"time"
 
 	"github.com/kapombe-k/Biostat/internal/config"
+	"github.com/kapombe-k/Biostat/internal/persistence"
 	"github.com/kapombe-k/Biostat/internal/services"
 	"github.com/kapombe-k/Biostat/internal/templates"
 )
 
 // Server wires HTTP routes, HTML/HTMX templates, static assets, and domain services.
 type Server struct {
-	cfg       *config.Config
-	explorer  *services.ExplorerService
-	blast     *services.BlastManager
-	renderer  *templates.Renderer
-	logger    *slog.Logger
-	startedAt time.Time
-	staticDir string
-	mux       *http.ServeMux
+	cfg               *config.Config
+	explorer          *services.ExplorerService
+	blast             *services.BlastManager
+	renderer          *templates.Renderer
+	logger            *slog.Logger
+	startedAt         time.Time
+	staticDir         string
+	library           persistence.Store
+	libraryPersistent bool
+	mux               *http.ServeMux
 }
 
 // NewServer constructs and configures all BioScope routes using Go 1.22+ standard library pattern routing.
@@ -49,7 +52,17 @@ func NewServer(
 		logger:    logger,
 		startedAt: time.Now().UTC(),
 		staticDir: staticDir,
+		library:   persistence.NewMemoryStore(),
 		mux:       http.NewServeMux(),
+	}
+	if cfg.SupabaseURL != "" && cfg.SupabaseServiceRoleKey != "" {
+		store, err := persistence.NewSupabaseStore(cfg.SupabaseURL, cfg.SupabaseServiceRoleKey)
+		if err != nil {
+			logger.Error("Supabase library disabled; using browser-local storage", "err", err)
+		} else {
+			s.library = store
+			s.libraryPersistent = true
+		}
 	}
 	s.registerRoutes()
 	return s
@@ -58,6 +71,11 @@ func NewServer(
 func (s *Server) registerRoutes() {
 	// Health & observability
 	s.mux.HandleFunc("GET /healthz", s.handleHealthz)
+
+	// User-scoped saved searches and reproducible library records.
+	s.mux.HandleFunc("GET /api/library", s.handleLibraryList)
+	s.mux.HandleFunc("PUT /api/library", s.handleLibraryPut)
+	s.mux.HandleFunc("DELETE /api/library/{key}", s.handleLibraryDelete)
 
 	// Pinned local static assets (HTMX, Mol*, 3Dmol.js, CSS, JS)
 	fs := http.FileServer(http.Dir(filepath.Clean(s.staticDir)))

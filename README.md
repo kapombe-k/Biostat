@@ -26,7 +26,7 @@ short_description: Interactive 3D protein structure, sequence & BLAST lab
 - **Zero-False-Equivalency Sequence-to-Structure Mapping:** Hybrid **PDBe SIFTS + affine-gap Smith–Waterman** alignment accurately handles cleaved pro-peptides (`4INS`), missing crystallographic loop density (`2HYY`), PDB insertion codes (`1GBT`: `184A`, `188A`, `221A`), and heteromeric binding partners (`1YCR`: `MDM2` bound to `p53`) without ever mis-mapping residue numbers.
 - **Rate-Governed Sequence Similarity Search:** Submit sequences asynchronously to **NCBI BLAST+ (`QBlast`)** with strict server-side rate governance (`≤ 1 status poll / 60s / RID`) or run instant classroom Smith–Waterman homology searches.
 - **5 Guided Interactive Lessons & Graded Quizzes:** Step-by-step curriculum driving live 3D camera transitions, representations, ligand pocket zoom, and comprehension checks across hemoglobin allostery, serine protease catalysis & kinase inhibition, AlphaFold confidence & disorder, disease variants (`HbS Glu7Val`, `p53–MDM2`), and multi-domain architecture.
-- **Reproducible Science Exports:** Share exact exploration states via URL query parameters or download **SHA-256 checksummed JSON provenance records** and **FASTA** files.
+- **Reproducible Science Exports & Research Library:** Share exploration state via URL query parameters; download **SHA-256 checksummed JSON provenance records** and **FASTA** files; pin searches/workspaces locally or sync the library to optional **Supabase** storage.
 
 ---
 
@@ -88,6 +88,8 @@ This repository includes the required Hugging Face Spaces YAML header at the top
 3. **Link 1D Sequence <-> 3D Atoms:** Click any colored residue tile in the bottom **Sequence-to-Structure Matrix** to zoom the 3D camera onto that exact chain, author sequence ID, and insertion code — or click any residue directly on the 3D model to highlight and scroll its sequence tile into view. Dashed gray tiles denote unmodeled crystallographic loops or cleaved pro-peptides.
 4. **Run Sequence Similarity Search:** Open the **BLAST** tab in the right inspector to run either an instant **Classroom Reference Homology Search** or an asynchronous **Live NCBI QBlast** job, then jump directly into any homologous hit's 3D workspace.
 5. **Take Guided Lessons:** Click **Guided Lessons** in the top navigation bar to step through interactive modules with automatic 3D camera choreography and instant quiz explanations.
+6. **Keep a Research Trail:** Save a search result or the current workspace; saved entries and recent cached lookups appear in the home-page Library and remain available in this browser when offline.
+7. **Adjust the Interface:** Use the half-moon control in the navigation bar to switch between light and dark workbench themes.
 
 ---
 
@@ -120,6 +122,16 @@ BioScope follows 12-factor configuration via environment variables (`internal/co
 | `BIOSCOPE_ALPHAFOLD_BASE_URL` | `https://alphafold.ebi.ac.uk` | Override AlphaFold DB API base URL |
 | `BIOSCOPE_PDBE_BASE_URL` | `https://www.ebi.ac.uk/pdbe` | Override PDBe / SIFTS base URL |
 | `BIOSCOPE_BLAST_BASE_URL` | `https://blast.ncbi.nlm.nih.gov/Blast.cgi` | Override NCBI QBlast CGI endpoint |
+| `SUPABASE_URL` | *(unset)* | Optional Supabase project URL; enables server-side durable library sync when paired with the service-role key |
+| `SUPABASE_SERVICE_ROLE_KEY` | *(unset)* | Optional server-only Supabase service-role secret; never expose this value in frontend configuration |
+
+### Saved studies, Supabase & local search cache
+
+BioScope keeps recent search metadata and a compact result cache in browser `localStorage` (scoped to that browser profile), so repeated queries can show a safe, text-only cached result while upstream search refreshes. Saved protein searches and workspace permalinks remain in browser storage by default, including when offline. The Library on the home page shows saved studies and recent searches; use **Save** on a result or **Save study** in a workspace to pin it.
+
+To keep the saved library in Supabase across application restarts and visits from the same browser profile, create a Supabase project, run [`docs/supabase.sql`](docs/supabase.sql) once in its SQL Editor, then set both `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in the deployment's secret/environment settings. Restart BioScope; the library status will report when it is synced. The service-role key stays exclusively in the Go server and all records are namespaced by a random browser-generated UUID. This is capability-based scoping, not user authentication: anyone with access to that browser profile can access its library. The owner ID currently lives in that profile, so cross-device/account sync requires a future authenticated sign-in integration. Do not put real personal or sensitive data in library records. With Supabase unset or unreachable, localStorage continues working; no browser data is sent to the server for long-term storage.
+
+Search cache entries contain only result titles, short labels, and same-origin exploration links—not executable HTML, sequence data, or credentials. Clear the browser's site data to reset its local cache/library. Supabase rows can be removed from the `bioscope_records` table to clear remote records.
 
 ### Health Monitoring & Observability
 
@@ -171,6 +183,7 @@ Biostat/
 │   ├── config/                    # Env configuration & outbound host allowlist
 │   ├── handlers/                  # HTTP mux, CSP/security headers, HTMX partials, JSON/FASTA exports
 │   ├── lessons/                   # 5 interactive structural biology lessons & quiz evaluator
+│   ├── persistence/               # Browser-scoped saved library & optional Supabase PostgREST adapter
 │   ├── seed/                      # Embedded PDB/mmCIF structures & curated classroom catalog
 │   ├── services/                  # Explorer orchestrator, SIFTS+SW mapper, async BlastManager
 │   └── templates/                 # Embedded Go html/template pages & partials
